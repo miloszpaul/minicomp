@@ -35,6 +35,16 @@ class LGBM():
         self.X_train = X_train
         self.X_valid = X_valid
         
+        # Start Optimization
+        self._optimization()
+        
+        # Recreate full dataset for fitting
+        X = pd.concat([X_train, X_valid], axis=0)
+        y = pd.concat([y_train, y_valid], axis=0)
+        
+        # fit model on full dataset
+        self.fitted_model=self.final_model.fit(X, y)
+        
 
     def _objective(self, trial) -> float:
         """Set parameters for optimization, keep track of f1"""
@@ -85,7 +95,7 @@ class LGBM():
         
         return f1
     
-    def optimization(self, X, y, X_test) -> pd.DataFrame:
+    def _optimization(self) -> pd.DataFrame:
         """Run optimization. Build trees, tweak hyperparameters and return prediction of test set
 
         Args:
@@ -123,9 +133,23 @@ class LGBM():
             objective='multiclass',
             **best_params
         )
+        return None
 
-        # fit model on full dataset
-        self.final_model.fit(X, y)
-        
-        return self.final_model.predict(X_test)
-            
+    def get_model(self):
+        return   self.fitted_model
+    
+    
+    def make_prediction(self, X) -> pd.DataFrame:
+        """Make prediction on X using fitted modell
+
+        Returns:
+            pd.DataFrame: y_predict on X
+        """
+        return self.fitted_model.predict(X)
+          
+    
+    def feature_importance_table(self) ->pd.DataFrame:
+        '''
+        returns feature importance of the fitted model
+        '''
+        return  pd.DataFrame(zip(self.fitted_model.feature_importances_,self.X_train.columns), columns=['Value','Feature'])
