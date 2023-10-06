@@ -27,3 +27,17 @@ def write_output(X_test, y_pred) -> None:
     
     # Write to csv
     output_df.to_csv('output.csv', index=False)
+    
+    
+    
+def test_column_equality(a, b) -> None:
+    """_summary_
+
+    Args:
+        a (pd.Dataframe): _description_
+        b (pd.Dataframe): _description_
+    """
+    if a.columns.equals(b.columns):
+        print("Both DataFrames have the same columns.")
+    else:
+        print("The columns of the DataFrames are different.")
