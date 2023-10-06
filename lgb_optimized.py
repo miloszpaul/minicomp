@@ -60,7 +60,7 @@ class LGBM():
             params,
             train_data,
             valid_sets=[valid_data],
-            num_boost_round=1000,  # You can adjust this as needed
+            num_boost_round=100,
         )
 
         # Predict probabilities for each class on the validation set
