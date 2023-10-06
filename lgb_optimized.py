@@ -108,7 +108,7 @@ class LGBM():
         """
             
         study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler())  # Maximize F1 score
-        study.optimize(self._objective, n_trials=100)
+        study.optimize(self._objective, n_trials=5)
         
         # Info on current run
         print('Number of finished trials:', len(study.trials))
