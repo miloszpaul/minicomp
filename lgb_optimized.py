@@ -8,10 +8,9 @@ import pandas as pd
 from sklearn.metrics import f1_score, make_scorer
 
 
-class LGBM():
-    """Class for LightGBM Forest and Optuna optimizer
-    """
-    
+class LGBM:
+    """Class for LightGBM Forest and Optuna optimizer"""
+
     def __init__(self, X_train, X_valid, y_train, y_valid) -> None:
         """Init class, store training and validation sets. Modify data where needed
 
@@ -22,43 +21,42 @@ class LGBM():
             y_valid (pd.DataFrame): Validation set, y values
         """
         # F1 score tracker. Use f1 micro for drivendata competition
-        self.f1_micro_scorer = make_scorer(f1_score, average='micro')
-        
+        self.f1_micro_scorer = make_scorer(f1_score, average="micro")
+
         # Initialize the best_f1_score variable as a list
         self.best_f1_score = [0.0]
-        
+
         # For optimization, classes need to go from [0,x]. Dataset starts at 1. Make adjustment
         self.y_train = y_train - 1
         self.y_valid = y_valid - 1
-        
+
         # No change at X
         self.X_train = X_train
         self.X_valid = X_valid
-        
+
         # Start Optimization
         self._optimization()
-        
+
         # Recreate full dataset for fitting
         X = pd.concat([X_train, X_valid], axis=0)
         y = pd.concat([y_train, y_valid], axis=0)
-        
+
         # fit model on full dataset
-        self.fitted_model=self.final_model.fit(X, y)
-        
+        self.fitted_model = self.final_model.fit(X, y)
 
     def _objective(self, trial) -> float:
         """Set parameters for optimization, keep track of f1"""
-    
+
         params = {
-            'objective': 'multiclass',
-            'num_class': 3,  # Set the number of classes in your dataset
-            'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3),
-            'subsample': trial.suggest_float('subsample', 0.7, 1.0),
-            'num_leaves': trial.suggest_int('num_leaves', 10, 100),
-            'min_data_in_leaf': trial.suggest_int('min_data_in_leaf', 1, 20),
-            'max_depth': trial.suggest_int('max_depth', 3, 15),
-            'lambda_l2': trial.suggest_float('lambda_l2', 0, 1),
-            'verbose': -1  # Suppress LightGBM output,
+            "objective": "multiclass",
+            "num_class": 3,  # Set the number of classes in your dataset
+            "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3),
+            "subsample": trial.suggest_float("subsample", 0.7, 1.0),
+            "num_leaves": trial.suggest_int("num_leaves", 10, 100),
+            "min_data_in_leaf": trial.suggest_int("min_data_in_leaf", 1, 20),
+            "max_depth": trial.suggest_int("max_depth", 3, 15),
+            "lambda_l2": trial.suggest_float("lambda_l2", 0, 1),
+            "verbose": -1,  # Suppress LightGBM output,
         }
 
         # Create the LightGBM dataset
@@ -83,18 +81,18 @@ class LGBM():
         self.y_pred_original_range = y_pred + 1
 
         # Calculate F1 score using micro averaging (Drivendata.com uses F1 micro)
-        f1 = f1_score(self.y_valid, self.y_pred_original_range, average='micro')
-        
+        f1 = f1_score(self.y_valid, self.y_pred_original_range, average="micro")
+
         # Update the best F1 score if a better score is found
         if f1 > self.best_f1_score[0]:
             self.best_f1_score[0] = f1
-        
+
         # Perform early stopping manually
         if trial.should_prune():
             raise optuna.TrialPruned()
-        
+
         return f1
-    
+
     def _optimization(self) -> pd.DataFrame:
         """Run optimization. Build trees, tweak hyperparameters and return prediction of test set
 
@@ -106,39 +104,36 @@ class LGBM():
         Returns:
             pd.DataFrame: Prediction of y values on testset
         """
-            
-        study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler())  # Maximize F1 score
+
+        study = optuna.create_study(
+            direction="maximize", sampler=optuna.samplers.TPESampler()
+        )  # Maximize F1 score
         study.optimize(self._objective, n_trials=2)
-        
+
         # Info on current run
-        print('Number of finished trials:', len(study.trials))
-        print('Best trial:')
+        print("Number of finished trials:", len(study.trials))
+        print("Best trial:")
         trial = study.best_trial
 
-        #print('  Value: {:.3f}'.format(trial.value))
-        #print('  Params: ')
-        #for key, value in trial.params.items():
+        # print('  Value: {:.3f}'.format(trial.value))
+        # print('  Params: ')
+        # for key, value in trial.params.items():
         #    print('    {}: {}'.format(key, value))
-        
-        # store best parameter set    
+
+        # store best parameter set
         best_params = trial.params
-        
+
         # Lovely ASCII line, report best f1 score
         print("--------------------------------")
         print(f"Best F1 Score: {self.best_f1_score[0]}")
         print("--------------------------------")
 
-
-        self.final_model = lgb.LGBMClassifier(
-            objective='multiclass',
-            **best_params
-        )
+        self.final_model = lgb.LGBMClassifier(objective="multiclass", **best_params)
         return None
 
     def get_model(self):
-        return   self.fitted_model
-    
-    
+        return self.fitted_model
+
     def make_prediction(self, X) -> pd.DataFrame:
         """Make prediction on X using fitted modell
 
@@ -146,10 +141,12 @@ class LGBM():
             pd.DataFrame: y_predict on X
         """
         return self.fitted_model.predict(X)
-          
-    
-    def feature_importance_table(self) ->pd.DataFrame:
-        '''
+
+    def feature_importance_table(self) -> pd.DataFrame:
+        """
         returns feature importance of the fitted model
-        '''
-        return  pd.DataFrame(zip(self.fitted_model.feature_importances_,self.X_train.columns), columns=['Value','Feature'])
+        """
+        return pd.DataFrame(
+            zip(self.fitted_model.feature_importances_, self.X_train.columns),
+            columns=["Value", "Feature"],
+        )
